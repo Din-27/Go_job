@@ -14,6 +14,6 @@ func ResponseError(c *gin.Context, sts string, value error) {
 	case "error":
 		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse(value))
 	default:
-		c.AbortWithStatusJSON(http.StatusBadRequest, ErrorResponse(value))
+		c.AbortWithStatusJSON(http.StatusInternalServerError, ErrorResponse(value))
 	}
 }

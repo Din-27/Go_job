@@ -10,14 +10,16 @@ func Services(r *gin.Engine) {
 
 	router := r.Group("/api/v1")
 
-	router.GET("/role", handler.RoleHandle)
+	// router.GET("/role", handler.RoleHandle)
 
-	router.POST("/register/:role", handler.Register)
-	router.POST("/login/:role", handler.Login)
+	router.POST("/register", handler.Register)
+	router.POST("/login", handler.Login)
 
 	router.GET("/refresh_token", handler.RefreshToken)
 
 	authRoutes := router.Use(token.AuthMiddleware())
+
+	authRoutes.GET("/checkauth", handler.CheckAuth)
 
 	authRoutes.GET("/provinsi", handler.ListProvince)
 	authRoutes.GET("/kabupaten/:id_provinsi", handler.ListKabupaten)
@@ -40,12 +42,6 @@ func Services(r *gin.Engine) {
 	// PERUSAHAAN
 	authRoutes.GET("/company", handler.GetProfileCompany)
 	authRoutes.GET("/lowongan/company", handler.GetAllLowonganCompany)
-	authRoutes.POST("/profile/company", handler.AddProfileCompany)
-
-	// LOWONGAN
-	authRoutes.GET("/lowongan", handler.GetAllLowongan)
-	authRoutes.GET("/detail/lowongan/:id_lowongan", handler.GetDetailLowongan)
-	authRoutes.POST("/lowongan", handler.AddLowongan)
 
 	r.Run()
 }

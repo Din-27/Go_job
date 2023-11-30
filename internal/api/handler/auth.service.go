@@ -41,168 +41,91 @@ func RoleHandle(c *gin.Context) {
 }
 
 func Register(c *gin.Context) {
-
-	role := c.Param("role")
-	if role == "user" {
-		var user models.User
-		if err := c.ShouldBindJSON(&user); err != nil {
-			_resError(c, "error", err)
-			return
-		}
-		err := utils.ValidateBody(user)
-		if err != nil {
-			_resError(c, "server internal error", err)
-			return
-		}
-		checkEmail := db.Where("email = ?", user.Email).Take(&user)
-		if checkEmail.Error == nil {
-			_resError(c, "error", _isErr("Email sudah terdaftar !"))
-			return
-		}
-		encodedHash, err := utils.GenerateFromPassword(user.Password, p)
-		if err != nil {
-			_resError(c, "server internal error", err)
-		}
-		user.Password = encodedHash
-		fmt.Println(user)
-
-		result := db.Create(&user)
-		if result.Error != nil {
-			_resError(c, "server internal error", result.Error)
-			return
-		}
-		c.AbortWithStatusJSON(http.StatusOK, gin.H{"message": "sukses register"})
-		return
-	} else {
-		var company models.Perusahaan
-		if err := c.ShouldBindJSON(&company); err != nil {
-			_resError(c, "error", err)
-			return
-		}
-		err := utils.ValidateBody(company)
-		if err != nil {
-			_resError(c, "server internal error", err)
-			return
-		}
-		checkEmail := db.Where("email = ?", company.Email).Take(&company)
-		if checkEmail.Error == nil {
-			_resError(c, "error", _isErr("Email sudah terdaftar !"))
-			return
-		}
-		encodedHash, err := utils.GenerateFromPassword(company.Password, p)
-		if err != nil {
-			_resError(c, "server internal error", err)
-		}
-		company.Password = encodedHash
-		fmt.Println(company)
-
-		result := db.Create(&company)
-		if result.Error != nil {
-			_resError(c, "server internal error", result.Error)
-			return
-		}
-		c.AbortWithStatusJSON(http.StatusOK, gin.H{"message": "sukses register"})
+	var user models.User
+	if err := c.ShouldBindJSON(&user); err != nil {
+		_resError(c, "error", err)
 		return
 	}
+	err := utils.ValidateBody(user)
+	if err != nil {
+		_resError(c, "server internal error", err)
+		return
+	}
+	checkEmail := db.Where("email = ?", user.Email).Take(&user)
+	if checkEmail.Error == nil {
+		_resError(c, "error", _isErr("Email sudah terdaftar !"))
+		return
+	}
+	encodedHash, err := utils.GenerateFromPassword(user.Password, p)
+	if err != nil {
+		_resError(c, "server internal error", err)
+	}
+	user.Password = encodedHash
+	fmt.Println(user)
+
+	result := db.Create(&user)
+	if result.Error != nil {
+		_resError(c, "server internal error", result.Error)
+		return
+	}
+	c.AbortWithStatusJSON(http.StatusOK, gin.H{"message": "sukses register"})
+	return
 }
 
 func Login(c *gin.Context) {
 	var (
-		login   models.Login
-		user    models.User
-		company models.Perusahaan
+		login models.Login
+		user  models.User
+		role  = "user"
 	)
-	role := c.Param("role")
 	if err := c.ShouldBindJSON(&login); err != nil {
 		_resError(c, "error", err)
 		return
 	}
 
-	if role == "user" {
-		result := db.Where("email = ?", login.Email).Take(&user)
-		if result.Error != nil {
-			_resError(c, "error", _isErr("Email tidak ditemukan !"))
-			return
-		}
-
-		encodedHash, err := utils.GenerateFromPassword(login.Password, p)
-		if err != nil {
-			_resError(c, "server internal error", err)
-		}
-		user.Password = encodedHash
-		match, _err := utils.ComparePasswordAndHash(login.Password, user.Password)
-		if _err != nil {
-			_resError(c, "server internal error", err)
-			return
-		}
-		if !match {
-			_resError(c, "error", _isErr("email atau Password salah !"))
-			return
-		}
-
-		refresh_token, err := utils.GenerateRefreshToken(user.Username, login.Email, role, oneWeek)
-		if err != nil {
-			_resError(c, "server internal error", err)
-			return
-		}
-		access_token, err := utils.GenerateAccessToken(user.Username, login.Email, role, oneDay)
-		if err != nil {
-			_resError(c, "server internal error", err)
-			return
-		}
-		results := models.ResponseLogin{
-			Id:           user.Id,
-			FirstName:    user.FirstName,
-			LastName:     user.LastName,
-			Username:     user.Username,
-			Email:        user.Email,
-			Specialist:   user.Specialist,
-			AccessToken:  access_token,
-			RefreshToken: refresh_token,
-		}
-		c.JSON(http.StatusOK, gin.H{"value": results})
-		return
-	} else {
-		result := db.Where("email = ?", login.Email).Take(&company)
-		if result.Error != nil {
-			_resError(c, "error", _isErr("Email tidak ditemukan !"))
-			return
-		}
-		encodedHash, err := utils.GenerateFromPassword(login.Password, p)
-		if err != nil {
-			_resError(c, "server internal error", err)
-		}
-		company.Password = encodedHash
-		match, _err := utils.ComparePasswordAndHash(login.Password, company.Password)
-		if _err != nil {
-			_resError(c, "server internal error", err)
-			return
-		}
-		if !match {
-			_resError(c, "error", _isErr("email atau Password salah !"))
-			return
-		}
-
-		refresh_token, err := utils.GenerateRefreshToken(company.Nama, login.Email, role, oneWeek)
-		if err != nil {
-			_resError(c, "server internal error", err)
-			return
-		}
-		access_token, err := utils.GenerateAccessToken(company.Nama, login.Email, role, oneDay)
-		if err != nil {
-			_resError(c, "server internal error", err)
-			return
-		}
-		results := models.ResponseLoginCompany{
-			Id:           company.Id,
-			Name:         company.Nama,
-			Email:        company.Email,
-			AccessToken:  access_token,
-			RefreshToken: refresh_token,
-		}
-		c.JSON(http.StatusOK, gin.H{"value": results})
+	result := db.Where("email = ?", login.Email).Take(&user)
+	if result.Error != nil {
+		_resError(c, "error", _isErr("Email tidak ditemukan !"))
 		return
 	}
+
+	encodedHash, err := utils.GenerateFromPassword(login.Password, p)
+	if err != nil {
+		_resError(c, "server internal error", err)
+	}
+	user.Password = encodedHash
+	match, _err := utils.ComparePasswordAndHash(login.Password, user.Password)
+	if _err != nil {
+		_resError(c, "server internal error", err)
+		return
+	}
+	if !match {
+		_resError(c, "error", _isErr("email atau Password salah !"))
+		return
+	}
+
+	refresh_token, err := utils.GenerateRefreshToken(user.Username, login.Email, role, oneWeek)
+	if err != nil {
+		_resError(c, "server internal error", err)
+		return
+	}
+	access_token, err := utils.GenerateAccessToken(user.Username, login.Email, role, oneDay)
+	if err != nil {
+		_resError(c, "server internal error", err)
+		return
+	}
+	results := models.ResponseLogin{
+		Id:           user.Id,
+		FirstName:    user.FirstName,
+		LastName:     user.LastName,
+		Username:     user.Username,
+		Email:        user.Email,
+		Specialist:   user.Specialist,
+		AccessToken:  access_token,
+		RefreshToken: refresh_token,
+	}
+	c.JSON(http.StatusOK, gin.H{"value": results})
+	return
 
 	// email := "test1@gmail.com"
 	// if email != login.Email {
@@ -214,10 +137,7 @@ func Login(c *gin.Context) {
 
 func RefreshToken(c *gin.Context) {
 
-	var (
-		user    models.User
-		company models.Perusahaan
-	)
+	var user models.User
 
 	authorizationHeader := c.GetHeader("authorization")
 
@@ -248,62 +168,41 @@ func RefreshToken(c *gin.Context) {
 		return
 	}
 
-	if result.Role == "user" {
-		checkUser := db.Where("email = ?", result.Email).Take(&user)
-		if checkUser.Error != nil {
-			_resError(c, "error", _isErr("Failed token invalid !"))
-			return
-		}
-		// If the token is valid, generate a new access token forthe same user
-		accessToken, err := utils.GenerateAccessToken(result.Username, result.Email, result.Role, oneDay)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate access token"})
-			return
-		}
-		refresh_token, err := utils.GenerateRefreshToken(result.Username, result.Email, result.Role, oneWeek)
-		if err != nil {
-			_resError(c, "server internal error", err)
-			return
-		}
-
-		results := models.ResponseLogin{
-			Id:           user.Id,
-			FirstName:    user.FirstName,
-			LastName:     user.LastName,
-			Username:     user.Username,
-			Email:        user.Email,
-			Specialist:   user.Specialist,
-			AccessToken:  accessToken,
-			RefreshToken: refresh_token,
-		}
-		c.JSON(http.StatusOK, gin.H{"value": results})
-	} else {
-		checkUser := db.Where("email = ?", result.Email).Take(&company)
-		if checkUser.Error != nil {
-			_resError(c, "error", _isErr("Failed token invalid !"))
-			return
-		}
-		// If the token is valid, generate a new access token forthe same user
-		accessToken, err := utils.GenerateAccessToken(result.Username, result.Email, result.Role, oneDay)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate access token"})
-			return
-		}
-		refresh_token, err := utils.GenerateRefreshToken(result.Username, result.Email, result.Role, oneWeek)
-		if err != nil {
-			_resError(c, "server internal error", err)
-			return
-		}
-
-		results := models.ResponseLoginCompany{
-			Id:           company.Id,
-			Name:         company.Nama,
-			Email:        company.Email,
-			AccessToken:  accessToken,
-			RefreshToken: refresh_token,
-		}
-
-		c.JSON(http.StatusOK, gin.H{"value": results})
+	checkUser := db.Where("email = ?", result.Email).Take(&user)
+	if checkUser.Error != nil {
+		_resError(c, "error", _isErr("Failed token invalid !"))
+		return
+	}
+	// If the token is valid, generate a new access token forthe same user
+	accessToken, err := utils.GenerateAccessToken(result.Username, result.Email, result.Role, oneDay)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate access token"})
+		return
+	}
+	refresh_token, err := utils.GenerateRefreshToken(result.Username, result.Email, result.Role, oneWeek)
+	if err != nil {
+		_resError(c, "server internal error", err)
+		return
 	}
 
+	results := models.ResponseLogin{
+		Id:           user.Id,
+		FirstName:    user.FirstName,
+		LastName:     user.LastName,
+		Username:     user.Username,
+		Email:        user.Email,
+		Specialist:   user.Specialist,
+		AccessToken:  accessToken,
+		RefreshToken: refresh_token,
+	}
+	c.JSON(http.StatusOK, gin.H{"value": results})
+}
+
+func CheckAuth(c *gin.Context) {
+	result, err := utils.DecodedTokenBearer(c, db)
+	if err != nil {
+		_resError(c, "server internal error", err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"value": result})
 }
